@@ -1,8 +1,10 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #05060d;
+  --foreground: #ece8df;
+  --line: rgba(255, 255, 255, 0.1);
+  --panel: rgba(7, 9, 16, 0.78);
 }
 
 @theme inline {
@@ -10,17 +12,59 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-instrument), "Palatino Linotype", Palatino, serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+html,
 body {
-  background: var(--background);
+  height: 100%;
+  background: #05060d;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), sans-serif;
+}
+
+.font-serif {
+  font-family: var(--font-serif);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 99px;
+}
+
+canvas {
+  display: block;
+}
+
+kbd {
+  font-family: var(--font-mono), ui-monospace, monospace;
+}
+
+.lab-panel {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  backdrop-filter: blur(18px);
+  border-radius: 12px;
+}
+
+.lab-rail {
+  border: 1px solid var(--line);
+  background: rgba(6, 8, 14, 0.82);
+  backdrop-filter: blur(18px);
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid rgba(242, 212, 138, 0.7);
+  outline-offset: 2px;
 }
