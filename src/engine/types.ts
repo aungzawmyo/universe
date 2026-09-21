@@ -142,7 +142,8 @@ export type LabMode =
   | "local-group"
   | "cosmic-web"
   | "observable-universe"
-  | "big-bang";
+  | "big-bang"
+  | "life";
 
 export type IntegratorName = "verlet" | "leapfrog" | "rk4";
 
@@ -180,4 +181,5 @@ export const LAB_MODES: { id: LabMode; label: string; hint: string }[] = [
   { id: "cosmic-web", label: "Cosmic Web", hint: "Filaments & voids" },
   { id: "observable-universe", label: "Observable Universe", hint: "Lookback time" },
   { id: "big-bang", label: "Big Bang", hint: "Expansion of space" },
+  { id: "life", label: "Life", hint: "Energy, genome, morphogenesis" },
 ];

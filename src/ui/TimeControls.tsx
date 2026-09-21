@@ -2,6 +2,7 @@
 
 import { COSMIC_EPOCHS, interpolateEpoch } from "@/lab/models";
 import { formatTimeScale } from "@/engine/units";
+import { lifeWorld } from "@/life/engine";
 import { simulation } from "@/simulation/engine";
 import { TIME_PRESETS, useExplorer } from "@/simulation/store";
 
@@ -53,7 +54,14 @@ export function TimeControls() {
         <button
           onClick={() => {
             simulation.reset();
-            useExplorer.setState({ andromedaT: 0, starAgeMyr: 4600, nebulaCollapsed: false, cosmologyT: 1 });
+            lifeWorld.reset();
+            useExplorer.setState({
+              andromedaT: 0,
+              starAgeMyr: 4600,
+              nebulaCollapsed: false,
+              cosmologyT: 1,
+              lifeSelectedId: lifeWorld.selectedId,
+            });
           }}
           className="rounded-md px-2 py-1 text-[11px] uppercase tracking-wider text-white/50 hover:text-white"
         >
@@ -82,7 +90,13 @@ export function TimeControls() {
           {paused ? "Play" : "Pause"}
         </button>
         <div className="min-w-20 px-1 font-mono text-[11px] text-amber-100/80">
-          {labMode === "stellar" ? `${starAge.toFixed(0)} Myr` : paused ? "paused" : formatTimeScale(timeScale)}
+          {labMode === "stellar"
+            ? `${starAge.toFixed(0)} Myr`
+            : labMode === "life"
+              ? `gen ${lifeWorld.maxGeneration}`
+              : paused
+                ? "paused"
+                : formatTimeScale(timeScale)}
         </div>
         <div className="hidden px-1 text-[11px] text-white/45 sm:block">
           {labMode === "solar-system" ? (simulation.physicsMode === "nbody" ? "N-body" : "Kepler") : labMode.replaceAll("-", " ")}

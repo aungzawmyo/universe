@@ -5,9 +5,11 @@ import type {
   IntegratorName,
   LabMode,
   LayerFlags,
+  ScenarioId,
   Wavelength,
 } from "@/engine/types";
 import { DAY, YEAR } from "@/engine/constants";
+import { lifeWorld } from "@/life/engine";
 
 export const TIME_PRESETS = [
   { label: "−1000×", value: -1000 },
@@ -64,6 +66,10 @@ export interface ExplorerState {
   wavelength: Wavelength;
   inspectorOpen: boolean;
   dockOpen: boolean;
+  helpOpen: boolean;
+  tourOpen: boolean;
+  tourStep: number;
+  scenarioId: ScenarioId | null;
   leftTab: "objects" | "layers" | "sandbox";
   cameraDistanceM: number;
   labMode: LabMode;
@@ -82,10 +88,15 @@ export interface ExplorerState {
   redshiftZ: number;
   cosmologyT: number;
   andromedaT: number;
+  lifeNutrient: number;
+  lifeMutation: number;
+  lifeTemperature: number;
+  lifeField: "resource" | "morphogen" | "none";
+  lifeSelectedId: string | null;
   integrator: IntegratorName;
   measureA: string | null;
   measureB: string | null;
-  createType: "planet" | "star" | "binary" | "asteroid" | "black-hole" | "neutron-star" | "nebula" | "galaxy";
+  createType: "planet" | "star" | "binary" | "asteroid" | "black-hole" | "neutron-star" | "nebula" | "galaxy" | "life";
   tick: number;
   select: (id: string | null) => void;
   focus: (id: string) => void;
@@ -117,6 +128,10 @@ export const useExplorer = create<ExplorerState>((set) => ({
   wavelength: "visible",
   inspectorOpen: true,
   dockOpen: true,
+  helpOpen: false,
+  tourOpen: false,
+  tourStep: 0,
+  scenarioId: null,
   leftTab: "objects",
   cameraDistanceM: 12 * 149_597_870_700,
   labMode: "solar-system",
@@ -135,6 +150,11 @@ export const useExplorer = create<ExplorerState>((set) => ({
   redshiftZ: 0.5,
   cosmologyT: 1,
   andromedaT: 0,
+  lifeNutrient: 0.55,
+  lifeMutation: 1,
+  lifeTemperature: 0.5,
+  lifeField: "resource",
+  lifeSelectedId: null,
   integrator: "verlet",
   measureA: "earth",
   measureB: "sun",
@@ -150,6 +170,7 @@ export const useExplorer = create<ExplorerState>((set) => ({
   setLabMode: (labMode) =>
     set((s) => ({
       labMode,
+      lifeSelectedId: labMode === "life" ? lifeWorld.selectedId : s.lifeSelectedId,
       layers: {
         ...s.layers,
         spacetime: labMode === "spacetime" ? true : s.layers.spacetime,

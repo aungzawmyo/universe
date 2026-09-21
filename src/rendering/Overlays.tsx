@@ -154,15 +154,27 @@ export function Photons() {
 }
 
 export function MeasurementLine() {
-  const enabled = useExplorer((s) => s.layers.distances);
+  const measureA = useExplorer((s) => s.measureA);
+  const measureB = useExplorer((s) => s.measureB);
+  const distances = useExplorer((s) => s.layers.distances);
   const selectedId = useExplorer((s) => s.selectedId);
   const focusId = useExplorer((s) => s.focusId);
   const cameraDistanceM = useExplorer((s) => s.cameraDistanceM);
-  if (!enabled || !selectedId) return null;
-  const a = simulation.body(selectedId);
-  const b = simulation.body("sun");
+  const aId = measureA ?? (distances ? selectedId : null);
+  const bId = measureB ?? (distances ? "sun" : null);
+  if (!aId || !bId || aId === bId) return null;
+  const a = simulation.body(aId);
+  const b = simulation.body(bId);
   if (!a || !b) return null;
   const origin = simulation.body(focusId)?.positionM ?? [0, 0, 0];
   const unit = renderUnitMeters(cameraDistanceM);
-  return <Line points={[toRender(a.positionM, origin, unit), toRender(b.positionM, origin, unit)]} color="#f0d48a" dashed dashSize={0.08} gapSize={0.05} />;
+  return (
+    <Line
+      points={[toRender(a.positionM, origin, unit), toRender(b.positionM, origin, unit)]}
+      color="#f0d48a"
+      dashed
+      dashSize={0.08}
+      gapSize={0.05}
+    />
+  );
 }

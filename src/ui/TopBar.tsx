@@ -6,6 +6,8 @@ import { NEARBY_STARS } from "@/data/nearby-stars";
 import { GALAXIES } from "@/lab/models";
 import { simulation } from "@/simulation/engine";
 import { useExplorer } from "@/simulation/store";
+import { startTour, endTour } from "./tour";
+import { useState } from "react";
 import type { AccuracyMode, LabMode, Wavelength } from "@/engine/types";
 import { LAB_MODES } from "@/engine/types";
 
@@ -36,6 +38,9 @@ export function TopBar() {
   const labMode = useExplorer((s) => s.labMode);
   const dockOpen = useExplorer((s) => s.dockOpen);
   const inspectorOpen = useExplorer((s) => s.inspectorOpen);
+  const helpOpen = useExplorer((s) => s.helpOpen);
+  const tourOpen = useExplorer((s) => s.tourOpen);
+  const [copied, setCopied] = useState(false);
   const tick = useExplorer((s) => s.tick);
   const date = tick === 0 ? "2026-09-20 00:00 UTC" : formatSimDate(simulation.timeS).replace(":00 UTC", " UTC").slice(0, 20);
   const lab = LAB_MODES.find((m) => m.id === labMode);
@@ -153,6 +158,36 @@ export function TopBar() {
             ))}
           </div>
           <div className="hidden font-mono text-[11px] text-amber-50/80 lg:block">{date}</div>
+          <button
+            type="button"
+            onClick={() => {
+              void navigator.clipboard.writeText(window.location.href).then(() => {
+                setCopied(true);
+                window.setTimeout(() => setCopied(false), 1600);
+              }).catch(() => undefined);
+            }}
+            className="hidden rounded-md border border-white/10 px-2 py-1 text-[11px] text-white/70 sm:block"
+          >
+            {copied ? "Copied" : "Share"}
+          </button>
+          <button
+            type="button"
+            onClick={() => (tourOpen ? endTour() : startTour())}
+            className={`rounded-md border px-2 py-1 text-[11px] ${
+              tourOpen ? "border-amber-200/30 bg-amber-200/10 text-amber-50" : "border-white/10 text-white/70"
+            }`}
+          >
+            Tour
+          </button>
+          <button
+            type="button"
+            onClick={() => useExplorer.setState({ helpOpen: !helpOpen })}
+            className={`rounded-md border px-2 py-1 text-[11px] ${
+              helpOpen ? "border-amber-200/30 bg-amber-200/10 text-amber-50" : "border-white/10 text-white/70"
+            }`}
+          >
+            Help
+          </button>
           <button
             type="button"
             onClick={() => useExplorer.setState({ dockOpen: !dockOpen })}

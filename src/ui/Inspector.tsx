@@ -1,7 +1,7 @@
 "use client";
 
-import { C } from "@/engine/constants";
-import { schwarzschildRadius } from "@/engine/kepler";
+import { C, G } from "@/engine/constants";
+import { gravitationalParameter, orbitalPeriod, schwarzschildRadius } from "@/engine/kepler";
 import {
   formatDistance,
   formatMass,
@@ -12,6 +12,7 @@ import {
   lightTravelTime,
 } from "@/engine/units";
 import { GALAXIES, interpolateEpoch, photonSphereKm, schwarzschildKm, stellarSnapshot, timeDilation } from "@/lab/models";
+import { bodyPlan, lifeWorld } from "@/life/engine";
 import { simulation } from "@/simulation/engine";
 import { useExplorer } from "@/simulation/store";
 import type { CameraMode, LabMode } from "@/engine/types";
@@ -66,6 +67,14 @@ function BodyInspector() {
     measureA && measureB && simulation.body(measureA) && simulation.body(measureB)
       ? simulation.distance(measureA, measureB)
       : 0;
+  const vesc = Math.sqrt((2 * G * body.massKg) / Math.max(1, body.radiusM));
+  const periodS =
+    body.orbit && parent
+      ? orbitalPeriod(gravitationalParameter(parent.massKg, body.massKg), body.orbit.a)
+      : null;
+  const energy = simulation.physicsMode === "nbody" ? simulation.mechanicalEnergy() : null;
+  const peerA = measureA ? simulation.body(measureA) : undefined;
+  const peerB = measureB ? simulation.body(measureB) : undefined;
 
   return (
     <Shell
@@ -110,9 +119,21 @@ function BodyInspector() {
         </>
       )}
       <Row label="Rotation" value={formatTime(Math.abs(body.rotationPeriodS))} />
+      {periodS ? <Row label="Orbital period" value={formatTime(periodS)} /> : null}
+      <Row label="Escape speed" value={formatSpeed(vesc)} />
       <Row label="Axial tilt" value={`${body.axialTiltDeg.toFixed(2)}°`} />
       {rs ? <Row label="Schwarzschild radius" value={formatDistance(rs)} /> : null}
       <Row label="Physics engine" value={simulation.physicsMode === "nbody" ? "N-body" : "Keplerian"} />
+      {energy ? <EnergyPlot current={energy.total} /> : null}
+      {peerA && peerB && peerA.id !== peerB.id ? (
+        <div className="rounded-md border border-white/10 p-2">
+          <div className="mb-1 text-[10px] uppercase tracking-wider text-white/50">Compare</div>
+          <Row label={`${peerA.name} mass`} value={formatMass(peerA.massKg)} />
+          <Row label={`${peerB.name} mass`} value={formatMass(peerB.massKg)} />
+          <Row label={`${peerA.name} radius`} value={formatRadius(peerA.radiusM)} />
+          <Row label={`${peerB.name} radius`} value={formatRadius(peerB.radiusM)} />
+        </div>
+      ) : null}
       {eclipse && body.id === "earth" ? (
         <div className="rounded-xl border border-amber-200/20 bg-amber-200/8 px-3 py-2 text-[12px] text-amber-100">
           {eclipse}
@@ -204,6 +225,7 @@ function ModeInspector({ mode }: { mode: LabMode }) {
       </Shell>
     );
   }
+  if (mode === "life") return <LifeInspector />;
   return <BigBangInspector />;
 }
 
@@ -346,6 +368,43 @@ function BigBangInspector() {
   );
 }
 
+function EnergyPlot({ current }: { current: number }) {
+  const samples = simulation.energyHistory;
+  const first = samples[0]?.total ?? current;
+  const drift = (current - first) / Math.max(Math.abs(first), 1);
+  const totals = samples.map((s) => s.total);
+  const min = totals.length ? Math.min(...totals) : current;
+  const max = totals.length ? Math.max(...totals) : current;
+  const span = Math.max(max - min, Math.abs(first) * 1e-9, 1);
+  const w = 220;
+  const h = 36;
+  const points =
+    totals.length > 1
+      ? totals
+          .map((v, i) => {
+            const x = (i / (totals.length - 1)) * w;
+            const y = h - ((v - min) / span) * (h - 6) - 3;
+            return `${x.toFixed(1)},${y.toFixed(1)}`;
+          })
+          .join(" ")
+      : "";
+
+  return (
+    <div className="rounded-md border border-white/10 p-2">
+      <Row label="N-body energy" value={`${current.toExponential(3)} J`} />
+      {points ? (
+        <svg viewBox={`0 0 ${w} ${h}`} className="mt-1 h-9 w-full" aria-label="Mechanical energy over time">
+          <polyline fill="none" stroke="#f0d48a" strokeWidth="1.4" points={points} />
+        </svg>
+      ) : null}
+      <Row label="Relative drift" value={`${(drift * 100).toExponential(2)} %`} />
+      <p className="pt-1 text-[11px] text-white/40">
+        Verlet and leapfrog should hold this nearly flat. A climb or drop is integrator error, not new physics.
+      </p>
+    </div>
+  );
+}
+
 function Shell({
   kicker,
   title,
@@ -389,6 +448,98 @@ function Row({ label, value }: { label: string; value: string }) {
       <span className="text-[11px] uppercase tracking-wider text-white/50">{label}</span>
       <span className="font-mono text-[12px] text-amber-50/90">{value}</span>
     </div>
+  );
+}
+
+function LifeInspector() {
+  const nutrient = useExplorer((s) => s.lifeNutrient);
+  const mutation = useExplorer((s) => s.lifeMutation);
+  const temperature = useExplorer((s) => s.lifeTemperature);
+  const field = useExplorer((s) => s.lifeField);
+  const selectedId = useExplorer((s) => s.lifeSelectedId);
+  const stats = lifeWorld.stats();
+  const org = lifeWorld.organisms.find((o) => o.id === selectedId && o.state !== "dead") ?? lifeWorld.selected();
+  const genome = org?.genome;
+
+  return (
+    <Shell kicker="alife" title="Life laboratory" badge="model">
+      <p className="text-[12px] leading-relaxed text-white/55">
+        Information + energy + matter + self-organization. Fibonacci, fractals, automata, and
+        reaction–diffusion are mechanisms — not a discovered law of life.
+      </p>
+      <Row label="Population" value={`${stats.population}`} />
+      <Row label="Generation" value={`${stats.generation}`} />
+      <Row label="Births / deaths" value={`${stats.births} / ${stats.deaths}`} />
+      <Row label="Mean energy" value={stats.meanEnergy.toFixed(1)} />
+      <Row label="Mean nodes" value={stats.meanNodes.toFixed(1)} />
+      {org && genome ? (
+        <>
+          <div className="pt-1 text-[10px] uppercase tracking-wider text-white/50">Selected genome</div>
+          <Row label="Body plan" value={bodyPlan(genome)} />
+          <Row label="State" value={org.state} />
+          <Row label="Stage / nodes" value={`${org.stage} / ${org.nodes.length}`} />
+          <Row label="Energy" value={org.energy.toFixed(1)} />
+          <Row label="Health" value={org.health.toFixed(2)} />
+          <Row label="Fibonacci weight" value={genome.fibonacciWeight.toFixed(2)} />
+          <Row label="Branch angle" value={`${((genome.branchAngle * 180) / Math.PI).toFixed(1)}°`} />
+          <Row label="Length ratio α" value={genome.lengthRatio.toFixed(2)} />
+          <Row label="Metabolism" value={genome.metabolism.toFixed(2)} />
+          <Row label="Chaos r" value={genome.chaosR.toFixed(2)} />
+          <Row label="Mutation" value={genome.mutationRate.toFixed(3)} />
+        </>
+      ) : (
+        <p className="text-[12px] text-white/45">Click an organism on the dish to inspect its program.</p>
+      )}
+      <Slider
+        label="Nutrient rain"
+        min={0.05}
+        max={1}
+        step={0.01}
+        value={nutrient}
+        onChange={(v) => useExplorer.setState({ lifeNutrient: v })}
+      />
+      <Slider
+        label="Mutation scale"
+        min={0.2}
+        max={4}
+        step={0.1}
+        value={mutation}
+        onChange={(v) => useExplorer.setState({ lifeMutation: v })}
+      />
+      <Slider
+        label="Temperature"
+        min={0.1}
+        max={1}
+        step={0.01}
+        value={temperature}
+        onChange={(v) => useExplorer.setState({ lifeTemperature: v })}
+      />
+      <div className="flex gap-1">
+        {(["resource", "morphogen", "none"] as const).map((mode) => (
+          <button
+            key={mode}
+            type="button"
+            onClick={() => useExplorer.setState({ lifeField: mode })}
+            className={`flex-1 rounded-md py-1 text-[11px] ${
+              field === mode ? "bg-amber-200 text-black" : "bg-white/8 text-white/60"
+            }`}
+          >
+            {mode}
+          </button>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          lifeWorld.reset();
+          useExplorer.setState({ lifeSelectedId: lifeWorld.selectedId });
+          useExplorer.getState().pulse();
+        }}
+        className="w-full rounded-xl bg-amber-200 py-2 text-sm text-black"
+      >
+        Reseed dish
+      </button>
+    </Shell>
   );
 }
 

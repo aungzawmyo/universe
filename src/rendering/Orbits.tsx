@@ -16,7 +16,7 @@ export function Orbits() {
   const selectedId = useExplorer((s) => s.selectedId);
   const tick = useExplorer((s) => s.tick);
   const bodies = useMemo(
-    () => simulation.activeBodies().filter((b) => b.orbit || b.type === "asteroid"),
+    () => simulation.activeBodies().filter((b) => b.orbit || b.type === "asteroid" || b.type === "comet"),
     [tick],
   );
 

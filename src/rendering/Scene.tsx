@@ -18,6 +18,7 @@ import {
   SpacetimeScene,
   StellarScene,
 } from "./modes/SpecializedScenes";
+import { LifeScene } from "./modes/LifeScene";
 import {
   BigBangScene,
   CosmicWebScene,
@@ -98,6 +99,7 @@ export function Scene() {
       {labMode === "cosmic-web" && <CosmicWebScene />}
       {labMode === "observable-universe" && <ObservableUniverseScene />}
       {labMode === "big-bang" && <BigBangScene />}
+      {labMode === "life" && <LifeScene />}
     </>
   );
 }

@@ -13,6 +13,8 @@ export function visualRadiusM(
   if (!star && !enhancePlanets) return Math.max(body.radiusM, 1);
   if (star) return Math.max(body.radiusM * 12, 0.22 * AU);
   if (body.type === "black-hole") return Math.max(body.radiusM * 80, 0.04 * AU);
+  if (body.type === "neutron-star") return Math.max(body.radiusM * 8e5, 0.02 * AU);
+  if (body.type === "comet") return Math.max(body.radiusM * 900, 0.018 * AU);
   if (body.type === "planet" && body.massKg > 1e26) return Math.max(body.radiusM * 28, 0.09 * AU);
   if (body.type === "planet") return Math.max(body.radiusM * 420, 0.045 * AU);
   if (body.type === "dwarf-planet") return Math.max(body.radiusM * 500, 0.028 * AU);
@@ -31,7 +33,7 @@ export function sceneUnit(cameraDistanceM: number): number {
 export function shouldShowBody(body: SimBody, scale: CosmicScale): boolean {
   if (body.removed) return false;
   if (scale === "stellar" || scale === "galactic") {
-    return body.type === "star" || body.type === "black-hole";
+    return body.type === "star" || body.type === "black-hole" || body.type === "neutron-star";
   }
   if (scale === "local-group" || scale === "cluster" || scale === "cosmic-web" || scale === "observable-universe") {
     return false;

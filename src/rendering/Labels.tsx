@@ -26,7 +26,7 @@ export function Labels() {
     .filter((b) => {
       if (scale === "stellar" || scale === "galactic") return b.type === "star";
       if (b.type === "moon") return cameraDistanceM < 0.4 * 149_597_870_700;
-      return b.type === "planet" || b.type === "star" || b.type === "dwarf-planet" || b.type === "black-hole" || b.type === "asteroid";
+      return b.type === "planet" || b.type === "star" || b.type === "dwarf-planet" || b.type === "black-hole" || b.type === "asteroid" || b.type === "comet" || b.type === "neutron-star";
     });
 
   return (

@@ -47,8 +47,10 @@ export class SimulationEngine {
   photons: Photon[] = [];
   revision = 0;
   integrator: IntegratorName = "verlet";
+  energyHistory: { timeS: number; kinetic: number; potential: number; total: number }[] = [];
   private catalog: CatalogBody[];
   private photonSeq = 1;
+  private energySkip = 0;
 
   constructor(catalog: CatalogBody[] = SOLAR_SYSTEM_CATALOG) {
     this.catalog = catalog.map((b) => ({ ...b, orbit: b.orbit ? { ...b.orbit } : undefined }));
@@ -61,6 +63,8 @@ export class SimulationEngine {
     this.timeS = toNow ? secondsSinceJ2000() : 0;
     this.bodies = this.catalog.map(cloneCatalog);
     this.photons = [];
+    this.energyHistory = [];
+    this.energySkip = 0;
     this.evaluateKepler();
     this.revision++;
   }
@@ -176,6 +180,10 @@ export class SimulationEngine {
     }
 
     this.stepPhotons(simDt);
+    if (this.physicsMode === "nbody") {
+      this.energySkip++;
+      if (this.energySkip % 8 === 0) this.sampleEnergy();
+    }
   }
 
   private integrateNBody(simDt: number) {
@@ -250,6 +258,9 @@ export class SimulationEngine {
     if (this.physicsMode === "nbody") return;
     this.evaluateKepler();
     this.physicsMode = "nbody";
+    this.energyHistory = [];
+    this.energySkip = 0;
+    this.sampleEnergy();
     this.revision++;
   }
 
@@ -285,6 +296,9 @@ export class SimulationEngine {
       this.enableNBody();
       body.removed = true;
       body.modified = true;
+      for (const child of this.bodies.filter((b) => b.parentId === id && !b.removed)) {
+        this.removeBody(child.id);
+      }
     }
     this.revision++;
   }
@@ -410,6 +424,36 @@ export class SimulationEngine {
     return id;
   }
 
+  createNeutronStar() {
+    const sun = this.body("sun");
+    if (!sun) return;
+    this.enableNBody();
+    const id = `neutron-star-${this.photonSeq++}`;
+    const body: SimBody = {
+      id,
+      name: "Sandbox pulsar",
+      type: "neutron-star",
+      parentId: null,
+      massKg: 1.4 * 1.98847e30,
+      radiusM: 1.2e4,
+      color: "#dfefff",
+      emissive: "#8cf4ff",
+      rotationPeriodS: 0.033,
+      axialTiltDeg: 60,
+      temperatureK: 6e5,
+      dataSource: "simulated",
+      positionM: [4.1 * AU, 0.2 * AU, -1.4 * AU],
+      velocityMS: [0, 1500, -11000],
+      accelerationMS2: zero(),
+      rotationRad: 0,
+      modified: true,
+      removed: false,
+    };
+    this.bodies.push(body);
+    this.revision++;
+    return id;
+  }
+
   emitPhoton(fromId?: string | null) {
     const origin = (fromId && this.body(fromId)) || this.body("sun");
     if (!origin) return;
@@ -497,6 +541,29 @@ export class SimulationEngine {
     const b = this.body(bId);
     if (!a || !b) return 0;
     return dist(a.positionM, b.positionM);
+  }
+
+  sampleEnergy() {
+    const energy = this.mechanicalEnergy();
+    this.energyHistory.push({ timeS: this.timeS, ...energy });
+    if (this.energyHistory.length > 240) this.energyHistory.shift();
+  }
+
+  mechanicalEnergy(): { kinetic: number; potential: number; total: number } {
+    const bodies = this.activeBodies();
+    let kinetic = 0;
+    let potential = 0;
+    for (const body of bodies) {
+      const v = length(body.velocityMS);
+      kinetic += 0.5 * body.massKg * v * v;
+    }
+    for (let i = 0; i < bodies.length; i++) {
+      for (let j = i + 1; j < bodies.length; j++) {
+        const r = Math.max(1, dist(bodies[i].positionM, bodies[j].positionM));
+        potential -= (this.G * bodies[i].massKg * bodies[j].massKg) / r;
+      }
+    }
+    return { kinetic, potential, total: kinetic + potential };
   }
 
   lagrangePoints(planetId: string): LagrangePoint[] {
